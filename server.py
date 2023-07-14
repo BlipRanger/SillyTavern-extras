@@ -765,6 +765,33 @@ def chromadb_add_messages():
     return jsonify({"count": len(ids)})
 
 
+@app.route("/api/chromadb/summary", methods=["POST"])
+@require_module("chromadb")
+def chromadb_add_messages():
+    data = request.get_json()
+    if "chat_id" not in data or not isinstance(data["chat_id"], str):
+        abort(400, '"chat_id" is required')
+
+    chat_id_md5 = hashlib.md5(data["chat_id"].encode()).hexdigest()
+    collection = chromadb_client.get_or_create_collection(
+        name=f"chat-{chat_id_md5}", embedding_function=chromadb_embed_fn
+    )
+
+    documents = [data["summary"]]
+    ids = [m["id"] for m in data["messages"]]
+    metadatas = [
+        {"role": m["role"], "date": m["date"], "meta": m.get("meta", "")}
+    ]
+
+    collection.upsert(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas,
+    )
+
+    return jsonify({"count": len(ids)})
+
+
 @app.route("/api/chromadb/purge", methods=["POST"])
 @require_module("chromadb")
 def chromadb_purge():
